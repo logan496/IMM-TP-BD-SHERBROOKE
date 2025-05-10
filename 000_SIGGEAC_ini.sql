@@ -8,7 +8,7 @@ DROP SCHEMA IF EXISTS professeurs CASCADE;
 CREATE SCHEMA professeurs;
 
 DROP SCHEMA IF EXISTS offre_service CASCADE;
-CREATE SCHEMA IF offre_service;
+CREATE SCHEMA IF NOT EXISTS offre_service;
 
 
 -- Suppression des vues IMM
