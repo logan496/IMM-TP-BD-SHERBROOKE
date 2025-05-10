@@ -1,49 +1,61 @@
--- === 030_SIGGEAC_IMM_base.sql : Interfaces IMM (vues + droits) ===
+-- ============================================
+-- Script SQL complet pour le projet SIGGEAC IMM
+-- Complète les rôles, utilisateurs et permissions
+-- Conforme au TP INFO323 (modularité & contrôle d'accès)
+-- ============================================
 
--- IMM_etudiant : accès lecture aux données personnelles et résultats
-CREATE OR REPLACE VIEW IMM_etudiant AS
-SELECT
-    e.id AS etudiant_id,
-    e.matricule,
-    e.nom,
-    e.prenom,
-    e.cycle,
-    i.annee,
-    i.session,
-    i.programme,
-    ev.cours_code,
-    ev.note
-FROM etudiants.etudiant e
-JOIN etudiants.inscription i ON e.id = i.etudiant_id
-LEFT JOIN etudiants.evaluation ev ON i.id = ev.inscription_id;
+-- === Création des rôles applicatifs ===
+CREATE ROLE consultation;
+CREATE ROLE modification;
+CREATE ROLE admin;
 
-GRANT SELECT ON IMM_etudiant TO etudiant_role;
+-- === Création des rôles usagers par portée d'accès ===
+CREATE ROLE etudiant_dossier;
+CREATE ROLE etudiant_evaluation;
+CREATE ROLE professeur_dossier;
+CREATE ROLE professeur_affectation;
+CREATE ROLE offre_service;
 
--- IMM_professeur : accès lecture/écriture sur affectations
-CREATE OR REPLACE VIEW IMM_professeur AS
-SELECT
-    p.id AS professeur_id,
-    p.nom,
-    p.prenom,
-    p.specialite,
-    a.cours_code,
-    a.annee,
-    a.session
-FROM professeurs.professeur p
-JOIN professeurs.affectation a ON p.id = a.professeur_id;
+-- === Création des utilisateurs (si non déjà présents) ===
+CREATE USER imm_etudiant PASSWORD 'etudiant';
+CREATE USER imm_professeur PASSWORD 'professeur';
+CREATE USER imm_administrateur PASSWORD 'admin';
 
-GRANT SELECT, UPDATE ON IMM_professeur TO affectation_role;
+-- === Attribution des rôles applicatifs ===
+GRANT consultation TO imm_etudiant;
+GRANT modification TO imm_professeur;
+GRANT admin TO imm_administrateur;
 
--- IMM_offre : accès complet sur les cours/modules
-CREATE OR REPLACE VIEW IMM_offre AS
-SELECT
-    c.code AS cours_code,
-    c.titre AS cours_titre,
-    c.credit,
-    m.sigle AS module_sigle,
-    m.titre AS module_titre,
-    m.credit AS module_credit
-FROM offre_service.cours c
-JOIN offre_service.module m ON c.module_sigle = m.sigle;
+-- === Attribution des rôles usagers ===
+GRANT etudiant_dossier TO imm_etudiant;
+GRANT etudiant_evaluation TO imm_etudiant;
+GRANT professeur_dossier TO imm_professeur;
+GRANT professeur_affectation TO imm_professeur;
+GRANT offre_service TO imm_administrateur;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON IMM_offre TO offre_role;
+-- ============================================
+-- Permissions
+-- ============================================
+
+
+-- Permissions fines (consultation, modification)
+-- Exemple : le rôle etudiant_dossier peut consulter les dossiers étudiants
+GRANT SELECT ON etudiants.etudiant TO etudiant_dossier;
+GRANT SELECT, INSERT, UPDATE ON etudiants.evaluation TO etudiant_evaluation;
+
+GRANT SELECT ON professeurs.affectation TO professeur_affectation;
+GRANT SELECT ON professeurs.affectation TO professeur_dossier;
+GRANT SELECT, INSERT ON offre_service.cours TO offre_service;
+
+-- Les rôles usagers sont inclus dans les rôles applicatifs
+GRANT etudiant_dossier, etudiant_evaluation TO consultation;
+GRANT professeur_dossier, professeur_affectation TO modification;
+GRANT offre_service TO admin;
+
+-- Attribution finale des rôles aux utilisateurs (enchaîné)
+-- Exemple : imm_etudiant hérite via consultation de tous les droits nécessaires
+GRANT consultation TO imm_etudiant;
+GRANT modification TO imm_professeur;
+GRANT admin TO imm_administrateur;
+
+-- ============================================
